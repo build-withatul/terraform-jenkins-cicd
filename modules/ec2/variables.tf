@@ -13,3 +13,8 @@ variable "name" {
 variable "environment" {
   type = string
 }
+
+variable "iam_instance_profile" {
+  description = "IAM instance profile name for EC2"
+  type        = string
+}

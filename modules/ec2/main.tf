@@ -14,11 +14,12 @@ resource "aws_instance" "this" {
     encrypted = true
   }
 
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  iam_instance_profile = var.iam_instance_profile
 
   tags = {
     Name        = var.name
     Environment = var.environment
     ManagedBy   = "Terraform"
+
   }
 }

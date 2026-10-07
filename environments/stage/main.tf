@@ -38,8 +38,9 @@ data "aws_ami" "ubuntu" {
 module "ec2" {
   source = "../../modules/ec2"
 
-  ami_id        = data.aws_ami.ubuntu.id
-  instance_type = var.instance_type
-  name          = "terraform-stage"
-  environment   = "stage"
+  ami_id               = data.aws_ami.ubuntu.id
+  instance_type        = var.instance_type
+  name                 = "terraform-stage"
+  environment          = "stage"
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 }
