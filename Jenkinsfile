@@ -38,7 +38,7 @@ pipeline {
                      credentialsId: 'sweety']
                 ]) {
                     sh '''
-                        terraform init
+                        terraform init -migrate-state -input=false
                     '''
                 }
             }
