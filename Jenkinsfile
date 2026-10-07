@@ -38,7 +38,7 @@ pipeline {
                      credentialsId: 'sweety']
                 ]) {
                     sh '''
-                        terraform init -input=false
+                        terraform init
                     '''
                 }
             }
