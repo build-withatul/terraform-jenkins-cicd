@@ -20,7 +20,7 @@ resource "aws_instance" "terraform_cicd" {
 
   tags = {
     Name        = "terraform-jenkins-cicd"
-    Environment = "dev"
+    Environment = "stage"
     ManagedBy   = "Terraform"
   }
 }
