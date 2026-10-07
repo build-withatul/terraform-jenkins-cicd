@@ -2,10 +2,6 @@ resource "aws_instance" "this" {
   ami           = var.ami_id
   instance_type = var.instance_type
 
-  monitoring = true
-
-  ebs_optimized = true
-
   metadata_options {
     http_tokens = "required"
   }
@@ -14,12 +10,9 @@ resource "aws_instance" "this" {
     encrypted = true
   }
 
-  iam_instance_profile = var.iam_instance_profile
-
   tags = {
     Name        = var.name
     Environment = var.environment
     ManagedBy   = "Terraform"
-
   }
 }
