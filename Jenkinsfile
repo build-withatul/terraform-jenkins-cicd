@@ -103,7 +103,7 @@ pipeline {
             steps {
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-credentials']
+                     credentialsId: 'sweety']
                 ]) {
                     sh '''
                         terraform output
