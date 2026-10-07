@@ -2,87 +2,148 @@ pipeline {
 
     agent any
 
+    environment {
+        AWS_DEFAULT_REGION = 'ap-south-1'
+        TF_IN_AUTOMATION   = 'true'
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/build-withatul/terraform-jenkins-cicd.git'
+                checkout scm
             }
         }
 
-        stage('AWS Authentication') {
-            steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'sweety']
-                ]) {
-                    sh '''
-                        aws sts get-caller-identity
-                    '''
-                }
-            }
-        }
-
-        stage('Terraform Init') {
-            steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'sweety']
-                ]) {
-                    sh '''
-                        terraform init -migrate-state -input=false
-                    '''
-                }
-            }
-        }
-
-        stage('Terraform Validate') {
+        stage('Terraform Format') {
             steps {
                 sh '''
-                    terraform fmt -check
-                    terraform validate
+                    terraform fmt -check -recursive
                 '''
             }
         }
 
-        stage('Terraform Plan') {
+        stage('DEV - Init') {
             steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'sweety']
-                ]) {
-                    sh '''
-                        terraform plan -input=false
-                    '''
+                dir('environments/dev') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh 'terraform init -input=false'
+                    }
                 }
             }
         }
 
-        stage('Terraform Apply') {
+        stage('DEV - Validate') {
             steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'sweety']
-                ]) {
-                    sh '''
-                        terraform apply -auto-approve -input=false
-                    '''
+                dir('environments/dev') {
+                    sh 'terraform validate'
                 }
             }
         }
 
-        stage('Terraform Output') {
+        stage('DEV - Plan') {
             steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'sweety']
-                ]) {
-                    sh '''
-                        terraform output
-                    '''
+                dir('environments/dev') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh '''
+                            terraform plan \
+                              -input=false \
+                              -out=dev.tfplan
+                        '''
+                    }
                 }
             }
+        }
+
+        stage('DEV - Apply') {
+            steps {
+                input(
+                    message: 'Deploy Terraform to DEV?',
+                    ok: 'Deploy DEV'
+                )
+
+                dir('environments/dev') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh '''
+                            terraform apply \
+                              -input=false \
+                              -auto-approve \
+                              dev.tfplan
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('STAGE - Deploy') {
+            steps {
+                input(
+                    message: 'Deploy Terraform to STAGE?',
+                    ok: 'Deploy STAGE'
+                )
+
+                dir('environments/stage') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh '''
+                            terraform init -input=false
+                            terraform plan -input=false -out=stage.tfplan
+                            terraform apply -input=false -auto-approve stage.tfplan
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('PROD - Approval') {
+            steps {
+                input(
+                    message: 'FINAL APPROVAL: Deploy Terraform to PRODUCTION?',
+                    ok: 'Deploy PROD'
+                )
+            }
+        }
+
+        stage('PROD - Deploy') {
+            steps {
+                dir('environments/prod') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh '''
+                            terraform init -input=false
+                            terraform plan -input=false -out=prod.tfplan
+                            terraform apply -input=false -auto-approve prod.tfplan
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Enterprise Terraform deployment completed successfully.'
+        }
+
+        failure {
+            echo 'Terraform deployment failed.'
+        }
+
+        always {
+            echo 'Terraform pipeline finished.'
         }
     }
 }
