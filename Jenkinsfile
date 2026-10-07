@@ -2,32 +2,25 @@ pipeline {
 
     agent any
 
-    environment {
-        AWS_DEFAULT_REGION = 'ap-south-1'
-        TF_IN_AUTOMATION   = 'true'
-    }
-
     stages {
 
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/build-withatul/terraform-jenkins-cicd.git'
             }
         }
 
-        stage('Terraform Version') {
+        stage('AWS Authentication') {
             steps {
-                sh '''
-                    terraform version
-                '''
-            }
-        }
-
-        stage('Terraform Format Check') {
-            steps {
-                sh '''
-                    terraform fmt -check -recursive
-                '''
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'sweety']
+                ]) {
+                    sh '''
+                        aws sts get-caller-identity
+                    '''
+                }
             }
         }
 
@@ -38,7 +31,7 @@ pipeline {
                      credentialsId: 'sweety']
                 ]) {
                     sh '''
-                        terraform init
+                        terraform init -migrate-state -input=false
                     '''
                 }
             }
@@ -47,6 +40,7 @@ pipeline {
         stage('Terraform Validate') {
             steps {
                 sh '''
+                    terraform fmt -check
                     terraform validate
                 '''
             }
@@ -59,27 +53,9 @@ pipeline {
                      credentialsId: 'sweety']
                 ]) {
                     sh '''
-                        terraform plan \
-                          -input=false \
-                          -out=tfplan
+                        terraform plan -input=false
                     '''
                 }
-            }
-        }
-
-        stage('Archive Terraform Plan') {
-            steps {
-                archiveArtifacts artifacts: 'tfplan',
-                                 fingerprint: true
-            }
-        }
-
-        stage('Manual Approval') {
-            steps {
-                input(
-                    message: 'Do you approve the Terraform deployment?',
-                    ok: 'Approve & Apply'
-                )
             }
         }
 
@@ -90,15 +66,12 @@ pipeline {
                      credentialsId: 'sweety']
                 ]) {
                     sh '''
-                        terraform apply \
-                          -input=false \
-                          -auto-approve \
-                          tfplan
+                        terraform apply -auto-approve -input=false
                     '''
                 }
             }
         }
-         
+
         stage('Terraform Output') {
             steps {
                 withCredentials([
@@ -108,22 +81,8 @@ pipeline {
                     sh '''
                         terraform output
                     '''
-                   }
+                }
             }
-        }
-
-    post {
-
-        success {
-            echo 'Terraform deployment completed successfully.'
-        }
-
-        failure {
-            echo 'Terraform CI/CD pipeline failed.'
-        }
-
-        always {
-            echo 'Terraform pipeline execution finished.'
         }
     }
 }
