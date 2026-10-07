@@ -38,7 +38,7 @@ pipeline {
                      credentialsId: 'sweety']
                 ]) {
                     sh '''
-                        terraform init -migrate-state
+                        echo "yes" | terraform init -migrate-state
                     '''
                 }
             }
