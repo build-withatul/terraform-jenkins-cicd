@@ -98,15 +98,19 @@ pipeline {
                 }
             }
         }
-
+         
         stage('Terraform Output') {
             steps {
-                sh '''
-                    terraform output
-                '''
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+                    sh '''
+                        terraform output
+                    '''
+                   }
             }
         }
-    }
 
     post {
 
