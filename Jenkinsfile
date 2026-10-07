@@ -23,6 +23,53 @@ pipeline {
             }
         }
 
+        stage('Terraform Init') {
+            steps {
+                dir('environments/dev') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh '''
+                            terraform init -input=false
+                        '''
+                       }
+                }
+            }
+        }
+
+        stage('Terraform Validate') {
+            steps {
+                dir('environments/dev') {
+                    sh '''
+                        terraform validate
+                    '''
+                }
+            }
+        }
+
+        stage('Checkov Security Scan') {
+            steps {
+                sh '''
+                    checkov \
+                      -d . \
+                      --framework terraform \
+                      --quiet
+                '''
+            }
+        }
+
+        stage('Trivy IaC Scan') {
+            steps {
+                sh '''
+                    trivy config \
+                      --severity HIGH,CRITICAL \
+                      --exit-code 1 \
+                      .
+                ''' 
+            }
+        }
+
         stage('DEV - Init') {
             steps {
                 dir('environments/dev') {
@@ -44,24 +91,7 @@ pipeline {
             }
         }
 
-        stage('DEV - Plan') {
-            steps {
-                dir('environments/dev') {
-                    withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
-                    ]) {
-                        sh '''
-                            terraform plan \
-                              -input=false \
-                              -out=dev.tfplan
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('DEV - Apply') {
+         stage('DEV - Apply') {
             steps {
                 input(
                     message: 'Deploy Terraform to DEV?',
@@ -134,16 +164,19 @@ pipeline {
     }
 
     post {
+        always {
+            archiveArtifacts(
+                artifacts: '**/*.tfplan',
+                allowEmptyArchive: true,
+                fingerprint: true
+            )
+        }
+
         success {
-            echo 'Enterprise Terraform deployment completed successfully.'
+            echo 'Terraform pipeline completed successfully.'
         }
 
         failure {
-            echo 'Terraform deployment failed.'
+            echo 'Terraform pipeline failed.'
         }
-
-        always {
-            echo 'Terraform pipeline finished.'
-        }
-    }
-}
+    } 
