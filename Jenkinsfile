@@ -180,3 +180,4 @@ pipeline {
             echo 'Terraform pipeline failed.'
         }
     } 
+}
