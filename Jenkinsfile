@@ -101,10 +101,7 @@ pipeline {
                          credentialsId: 'sweety']
                     ]) {
                         sh '''
-                            terraform apply \
-                              -input=false \
-                              -auto-approve \
-                              dev.tfplan
+                            terraform apply -input=false -auto-approve dev.tfplan
                         '''
                     }
                 }
