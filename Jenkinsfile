@@ -93,23 +93,6 @@ pipeline {
             }
         }
 
-        stage('DEV Plan') {
-            steps {
-                dir('environments/dev') {
-                    sh '''
-                        echo "Current directory:"
-                        pwd
-
-                        terraform plan \
-                        -input=false \
-                        -out=dev.tfplan
-
-                        echo "Generated plan:"
-                        ls -lh dev.tfplan
-                    '''
-                }
-            }
-        }
         stage('DEV Apply') {
             steps {
                 dir('environments/dev') {
@@ -123,6 +106,8 @@ pipeline {
                         echo "Checking plan:"
                         ls -lh dev.tfplan
 
+                        echo "Generated plan:"
+                        ls -lh dev.tfplan
                         terraform apply -input=false -auto-approve dev.tfplan
                     '''
                 }
