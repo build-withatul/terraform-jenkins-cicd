@@ -66,7 +66,7 @@ pipeline {
             steps {
                 dir('environments/dev') {
                     sh '''
-                        checkov \
+                        /var/lib/jenkins/checkov-venv/bin/checkov \
                           -d . \
                           --framework terraform \
                           --quiet
