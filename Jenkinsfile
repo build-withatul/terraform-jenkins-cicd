@@ -95,11 +95,6 @@ pipeline {
 
          stage('DEV - Apply') {
             steps {
-                input(
-                    message: 'Deploy Terraform to DEV?',
-                    ok: 'Deploy DEV'
-                )
-
                 dir('environments/dev') {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding',
