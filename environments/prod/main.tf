@@ -46,7 +46,7 @@ module "ec2" {
 }
 
 resource "aws_iam_role" "ec2_role" {
-  name = "terraform-cicd-stage-ec2-role"
+  name = "terraform-cicd-prod-ec2-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -64,6 +64,6 @@ resource "aws_iam_role" "ec2_role" {
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "terraform-cicd-stage-ec2-profile"
+  name = "terraform-cicd-prod-ec2-profile"
   role = aws_iam_role.ec2_role.name
 }
