@@ -46,7 +46,7 @@ pipeline {
             steps {
                 dir('environments/dev') {
                     sh '''
-                        terraform init -reconfigure
+                        terraform init -input=false -reconfigure
                     '''
                 }
             }
@@ -119,7 +119,7 @@ pipeline {
             steps {
                 dir('environments/stage') {
                     sh '''
-                        terraform init -reconfigure
+                        terraform init -input=false -reconfigure
                     '''
                 }
             }
@@ -164,7 +164,7 @@ pipeline {
             steps {
                 dir('environments/prod') {
                     sh '''
-                        terraform init -reconfigure
+                        terraform init -input=false -reconfigure
                     '''
                 }
             }
