@@ -1,24 +1,3 @@
-terraform {
-  required_version = ">= 1.14"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-
-  backend "s3" {
-    bucket = "terraform-jenkins-cicd-atul-25"
-    key    = "prod/terraform.tfstate"
-    region = "ap-south-1"
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-
 data "aws_ami" "ubuntu" {
   most_recent = true
 
@@ -38,10 +17,10 @@ data "aws_ami" "ubuntu" {
 module "ec2" {
   source = "../../modules/ec2"
 
-  ami_id               = data.aws_ami.ubuntu.id
+  ami_id               = var.ami_id
   instance_type        = var.instance_type
   name                 = "terraform-prod"
-  environment          = "prod"
+  environment          = var.environment
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 }
 

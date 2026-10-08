@@ -3,7 +3,14 @@ variable "aws_region" {
   default = "ap-south-1"
 }
 
+variable "ami_id" {
+  type = string
+}
+
 variable "instance_type" {
-  type    = string
-  default = "t3.micro"
+  type = string
+}
+
+variable "environment" {
+  type = string
 }
