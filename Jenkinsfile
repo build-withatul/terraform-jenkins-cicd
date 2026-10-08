@@ -44,11 +44,12 @@ pipeline {
         stage('Checkov Security Scan') {
             steps {
                 sh '''
-                    echo "Running Checkov Terraform security scan..."
-                    /var/lib/jenkins/checkov-venv/bin/checkov \
-                      -d . \
-                      --framework terraform \
-                      --quiet
+                    echo "=== CHECKOV DEBUG ==="
+                    whoami
+                    pwd
+                    ls -l /var/lib/jenkins/checkov-venv/bin/checkov
+                    /var/lib/jenkins/checkov-venv/bin/checkov --version
+                    /var/lib/jenkins/checkov-venv/bin/checkov -d . --framework terraform --quiet
                 '''
             }
         }
