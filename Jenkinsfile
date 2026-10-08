@@ -1,3 +1,4 @@
+```groovy
 pipeline {
 
     agent any
@@ -33,7 +34,7 @@ pipeline {
                         sh '''
                             terraform init -input=false
                         '''
-                       }
+                    }
                 }
             }
         }
@@ -56,7 +57,7 @@ pipeline {
                     /var/lib/jenkins/checkov-venv/bin/checkov \
                         -d . \
                         --framework terraform \
-                        --quiet         
+                        --quiet
                 '''
             }
         }
@@ -64,13 +65,19 @@ pipeline {
         stage('Trivy IaC Scan') {
             steps {
                 sh '''
+                    echo "Running Trivy IaC security scan..."
+
                     trivy config \
                       --severity HIGH,CRITICAL \
                       --exit-code 1 \
                       .
-                ''' 
+                '''
             }
         }
+
+        // =========================
+        // DEV
+        // =========================
 
         stage('DEV - Init') {
             steps {
@@ -79,7 +86,9 @@ pipeline {
                         [$class: 'AmazonWebServicesCredentialsBinding',
                          credentialsId: 'sweety']
                     ]) {
-                        sh 'terraform init -input=false'
+                        sh '''
+                            terraform init -input=false
+                        '''
                     }
                 }
             }
@@ -88,33 +97,75 @@ pipeline {
         stage('DEV - Validate') {
             steps {
                 dir('environments/dev') {
-                    sh 'terraform validate'
-                }
-            }
-        }
-
-        stage('DEV Apply') {
-            steps {
-                dir('environments/dev') {
                     sh '''
-                        echo "Current directory:"
-                        pwd
-
-                        echo "plan file:"
-                        ls -lah
-
-                        echo "Checking plan:"
-                        ls -lh dev.tfplan
-
-                        echo "Generated plan:"
-                        ls -lh dev.tfplan
-                        terraform apply -input=false -auto-approve dev.tfplan
+                        terraform validate
                     '''
                 }
             }
         }
+
+        stage('DEV - Plan') {
+            steps {
+                dir('environments/dev') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh '''
+                            echo "Creating DEV Terraform plan..."
+
+                            terraform plan \
+                              -input=false \
+                              -out=dev.tfplan
+
+                            echo "DEV plan created:"
+                            ls -lh dev.tfplan
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('DEV - Approval') {
+            steps {
+                input(
+                    message: 'Deploy Terraform to DEV?',
+                    ok: 'Deploy DEV'
+                )
+            }
+        }
+
+        stage('DEV - Apply') {
+            steps {
+                dir('environments/dev') {
+                    withCredentials([
+                        [$class: 'AmazonWebServicesCredentialsBinding',
+                         credentialsId: 'sweety']
+                    ]) {
+                        sh '''
+                            echo "Current directory:"
+                            pwd
+
+                            echo "DEV plan file:"
+                            ls -lh dev.tfplan
+
+                            terraform apply \
+                              -input=false \
+                              -auto-approve \
+                              dev.tfplan
+                        '''
+                    }
+                }
+            }
+        }
+
+        // =========================
+        // STAGE
+        // =========================
+
         stage('STAGE - Deploy') {
             steps {
+
                 input(
                     message: 'Deploy Terraform to STAGE?',
                     ok: 'Deploy STAGE'
@@ -126,14 +177,34 @@ pipeline {
                          credentialsId: 'sweety']
                     ]) {
                         sh '''
+                            echo "Initializing STAGE..."
+
                             terraform init -input=false
-                            terraform plan -input=false -out=stage.tfplan
-                            terraform apply -input=false -auto-approve stage.tfplan
+
+                            echo "Creating STAGE plan..."
+
+                            terraform plan \
+                              -input=false \
+                              -out=stage.tfplan
+
+                            echo "STAGE plan created:"
+                            ls -lh stage.tfplan
+
+                            echo "Applying STAGE..."
+
+                            terraform apply \
+                              -input=false \
+                              -auto-approve \
+                              stage.tfplan
                         '''
                     }
                 }
             }
         }
+
+        // =========================
+        // PROD APPROVAL
+        // =========================
 
         stage('PROD - Approval') {
             steps {
@@ -144,6 +215,10 @@ pipeline {
             }
         }
 
+        // =========================
+        // PROD
+        // =========================
+
         stage('PROD - Deploy') {
             steps {
                 dir('environments/prod') {
@@ -152,9 +227,25 @@ pipeline {
                          credentialsId: 'sweety']
                     ]) {
                         sh '''
+                            echo "Initializing PROD..."
+
                             terraform init -input=false
-                            terraform plan -input=false -out=prod.tfplan
-                            terraform apply -input=false -auto-approve prod.tfplan
+
+                            echo "Creating PROD plan..."
+
+                            terraform plan \
+                              -input=false \
+                              -out=prod.tfplan
+
+                            echo "PROD plan created:"
+                            ls -lh prod.tfplan
+
+                            echo "Applying PROD..."
+
+                            terraform apply \
+                              -input=false \
+                              -auto-approve \
+                              prod.tfplan
                         '''
                     }
                 }
@@ -163,6 +254,7 @@ pipeline {
     }
 
     post {
+
         always {
             archiveArtifacts(
                 artifacts: '**/*.tfplan',
@@ -178,5 +270,6 @@ pipeline {
         failure {
             echo 'Terraform pipeline failed.'
         }
-    } 
+    }
 }
+```
