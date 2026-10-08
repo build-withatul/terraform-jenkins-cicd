@@ -8,8 +8,7 @@ crash.*.log
 .terraform.tfstate.lock.info
 .env
 # Terraform variable files containing secrets
-*.tfvars
-*.tfvars.json
+
 
 # Override files
 override.tf
