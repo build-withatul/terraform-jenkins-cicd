@@ -100,8 +100,6 @@ pipeline {
                         echo "Current directory:"
                         pwd
 
-                        terraform init -input=false
-
                         terraform plan \
                         -input=false \
                         -out=dev.tfplan
