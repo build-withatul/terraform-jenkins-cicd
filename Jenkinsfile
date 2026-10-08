@@ -1,6 +1,17 @@
 pipeline {
 
     agent any
+    
+    options {
+        disableConcurrentBuilds()
+
+        timestamps()
+
+        timeout(
+            time: 30,
+            unit: 'MINUTES'
+        )
+    }
 
     parameters {
         choice(
@@ -12,7 +23,7 @@ pipeline {
         booleanParam(
             name: 'AUTO_APPROVE',
             defaultValue: false,
-            description: 'Skip approval for controlled testing'
+            description: 'Skip manual approval - use only for controlled testing'
         )
     }
 
