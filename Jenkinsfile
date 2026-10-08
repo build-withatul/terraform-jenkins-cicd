@@ -93,6 +93,25 @@ pipeline {
             }
         }
 
+        stage('DEV Plan') {
+            steps {
+                dir('environments/dev') {
+                    sh '''
+                        echo "Current directory:"
+                        pwd
+
+                        terraform init -input=false
+
+                        terraform plan \
+                        -input=false \
+                        -out=dev.tfplan
+
+                        echo "Generated plan:"
+                        ls -lh dev.tfplan
+                    '''
+                }
+            }
+        }
         stage('DEV Apply') {
             steps {
                 dir('environments/dev') {
@@ -100,7 +119,7 @@ pipeline {
                         echo "Current directory:"
                         pwd
 
-                        echo "Files:"
+                        echo "plan file:"
                         ls -lah
 
                         echo "Checking plan:"
