@@ -70,7 +70,7 @@ pipeline {
                 dir("environments/${params.ENVIRONMENT}") {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'terraform-aws']
+                         credentialsId: 'sweety']
                     ]) {
                         sh 'terraform init -input=false'
                     }
@@ -91,7 +91,7 @@ pipeline {
                 dir("environments/${params.ENVIRONMENT}") {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'terraform-aws']
+                         credentialsId: 'sweety']
                     ]) {
                         sh '''
                             terraform plan \
@@ -145,7 +145,7 @@ pipeline {
                 dir("environments/${params.ENVIRONMENT}") {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'terraform-aws']
+                         credentialsId: 'sweety']
                     ]) {
                         sh '''
                             terraform apply \
