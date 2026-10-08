@@ -93,21 +93,24 @@ pipeline {
             }
         }
 
-         stage('DEV - Apply') {
+        stage('DEV Apply') {
             steps {
                 dir('environments/dev') {
-                    withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
-                    ]) {
-                        sh '''
-                            terraform apply -input=false -auto-approve dev.tfplan
-                        '''
-                    }
+                    sh '''
+                        echo "Current directory:"
+                        pwd
+
+                        echo "Files:"
+                        ls -lah
+
+                        echo "Checking plan:"
+                        ls -lh dev.tfplan
+
+                        terraform apply -input=false -auto-approve dev.tfplan
+                    '''
                 }
             }
         }
-
         stage('STAGE - Deploy') {
             steps {
                 input(
