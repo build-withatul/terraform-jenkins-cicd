@@ -46,7 +46,7 @@ pipeline {
             steps {
                 dir('environments/dev') {
                     sh '''
-                        terraform init -migrate-state
+                        terraform init -reconfigure
                     '''
                 }
             }
@@ -119,7 +119,7 @@ pipeline {
             steps {
                 dir('environments/stage') {
                     sh '''
-                        terraform init -migrate-state
+                        terraform init -reconfigure
                     '''
                 }
             }
@@ -164,7 +164,7 @@ pipeline {
             steps {
                 dir('environments/prod') {
                     sh '''
-                        terraform init -migrate-state
+                        terraform init -reconfigure
                     '''
                 }
             }
