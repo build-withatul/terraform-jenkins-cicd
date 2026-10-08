@@ -46,7 +46,7 @@ pipeline {
             steps {
                 dir('environments/dev') {
                     sh '''
-                        terraform init -input=false
+                        terraform init -migrate-state
                     '''
                 }
             }
@@ -119,7 +119,7 @@ pipeline {
             steps {
                 dir('environments/stage') {
                     sh '''
-                        terraform init -input=false
+                        terraform init -migrate-state
                     '''
                 }
             }
@@ -164,7 +164,7 @@ pipeline {
             steps {
                 dir('environments/prod') {
                     sh '''
-                        terraform init -input=false
+                        terraform init -migrate-state
                     '''
                 }
             }
