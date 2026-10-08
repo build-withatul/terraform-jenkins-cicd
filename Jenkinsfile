@@ -2,6 +2,20 @@ pipeline {
 
     agent any
 
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'stage', 'prod'],
+            description: 'Terraform environment'
+        )
+
+        booleanParam(
+            name: 'AUTO_APPROVE',
+            defaultValue: false,
+            description: 'Skip approval for controlled testing'
+        )
+    }
+
     environment {
         AWS_DEFAULT_REGION = 'ap-south-1'
         TF_IN_AUTOMATION   = 'true'
@@ -15,57 +29,32 @@ pipeline {
             }
         }
 
+        stage('Terraform Version') {
+            steps {
+                sh 'terraform version'
+            }
+        }
+
         stage('Terraform Format') {
             steps {
+                sh 'terraform fmt -check -recursive'
+            }
+        }
+
+        stage('Checkov') {
+            steps {
                 sh '''
-                    terraform fmt -check -recursive
+                    checkov \
+                      -d . \
+                      --framework terraform \
+                      --quiet
                 '''
             }
         }
 
-        stage('Terraform Init') {
-            steps {
-                dir('environments/dev') {
-                    withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
-                    ]) {
-                        sh '''
-                            terraform init -input=false
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Validate') {
-            steps {
-                dir('environments/dev') {
-                    sh '''
-                        terraform validate
-                    '''
-                }
-            }
-        }
-
-        stage('Checkov Security Scan') {
+        stage('Trivy') {
             steps {
                 sh '''
-                    echo "Running Checkov Terraform security scan..."
-
-                    /var/lib/jenkins/checkov-venv/bin/checkov \
-                        -d . \
-                        --framework terraform \
-                        --quiet
-                '''
-            }
-        }
-
-        stage('Trivy IaC Scan') {
-            steps {
-                sh '''
-                    echo "Running Trivy IaC security scan..."
-
                     trivy config \
                       --severity HIGH,CRITICAL \
                       --exit-code 1 \
@@ -74,179 +63,103 @@ pipeline {
             }
         }
 
-        // =========================
-        // DEV
-        // =========================
-
-        stage('DEV - Init') {
+        stage('Terraform Init') {
             steps {
-                dir('environments/dev') {
+                dir("environments/${params.ENVIRONMENT}") {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
+                         credentialsId: 'terraform-aws']
                     ]) {
-                        sh '''
-                            terraform init -input=false
-                        '''
+                        sh 'terraform init -input=false'
                     }
                 }
             }
         }
 
-        stage('DEV - Validate') {
+        stage('Terraform Validate') {
             steps {
-                dir('environments/dev') {
-                    sh '''
-                        terraform validate
-                    '''
+                dir("environments/${params.ENVIRONMENT}") {
+                    sh 'terraform validate'
                 }
             }
         }
 
-        stage('DEV - Plan') {
+        stage('Terraform Plan') {
             steps {
-                dir('environments/dev') {
+                dir("environments/${params.ENVIRONMENT}") {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
+                         credentialsId: 'terraform-aws']
                     ]) {
                         sh '''
-                            echo "Creating DEV Terraform plan..."
-
                             terraform plan \
                               -input=false \
-                              -out=dev.tfplan
-
-                            echo "DEV plan created:"
-                            ls -lh dev.tfplan
+                              -out=tfplan
                         '''
                     }
                 }
             }
         }
 
-        stage('DEV - Approval') {
+        stage('Archive Plan') {
             steps {
-                input(
-                    message: 'Deploy Terraform to DEV?',
-                    ok: 'Deploy DEV'
+                archiveArtifacts(
+                    artifacts: "environments/${params.ENVIRONMENT}/tfplan",
+                    fingerprint: true
                 )
             }
         }
 
-        stage('DEV - Apply') {
+        stage('Approval') {
+            when {
+                expression {
+                    return !params.AUTO_APPROVE
+                }
+            }
+
             steps {
-                dir('environments/dev') {
+                script {
+
+                    if (params.ENVIRONMENT == 'prod') {
+
+                        input(
+                            message: 'FINAL APPROVAL: Deploy to PRODUCTION?',
+                            ok: 'Deploy Production'
+                        )
+
+                    } else {
+
+                        input(
+                            message: "Approve deployment to ${params.ENVIRONMENT}?",
+                            ok: "Deploy ${params.ENVIRONMENT}"
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                dir("environments/${params.ENVIRONMENT}") {
                     withCredentials([
                         [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
+                         credentialsId: 'terraform-aws']
                     ]) {
                         sh '''
-                            echo "Current directory:"
-                            pwd
-
-                            echo "DEV plan file:"
-                            ls -lh dev.tfplan
-
                             terraform apply \
                               -input=false \
                               -auto-approve \
-                              dev.tfplan
+                              tfplan
                         '''
                     }
                 }
             }
         }
 
-        // =========================
-        // STAGE
-        // =========================
-
-        stage('STAGE - Deploy') {
+        stage('Terraform Output') {
             steps {
-
-                input(
-                    message: 'Deploy Terraform to STAGE?',
-                    ok: 'Deploy STAGE'
-                )
-
-                dir('environments/stage') {
-                    withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
-                    ]) {
-                        sh '''
-                            echo "Initializing STAGE..."
-
-                            terraform init -input=false
-
-                            echo "Creating STAGE plan..."
-
-                            terraform plan \
-                              -input=false \
-                              -out=stage.tfplan
-
-                            echo "STAGE plan created:"
-                            ls -lh stage.tfplan
-
-                            echo "Applying STAGE..."
-
-                            terraform apply \
-                              -input=false \
-                              -auto-approve \
-                              stage.tfplan
-                        '''
-                    }
-                }
-            }
-        }
-
-        // =========================
-        // PROD APPROVAL
-        // =========================
-
-        stage('PROD - Approval') {
-            steps {
-                input(
-                    message: 'FINAL APPROVAL: Deploy Terraform to PRODUCTION?',
-                    ok: 'Deploy PROD'
-                )
-            }
-        }
-
-        // =========================
-        // PROD
-        // =========================
-
-        stage('PROD - Deploy') {
-            steps {
-                dir('environments/prod') {
-                    withCredentials([
-                        [$class: 'AmazonWebServicesCredentialsBinding',
-                         credentialsId: 'sweety']
-                    ]) {
-                        sh '''
-                            echo "Initializing PROD..."
-
-                            terraform init -input=false
-
-                            echo "Creating PROD plan..."
-
-                            terraform plan \
-                              -input=false \
-                              -out=prod.tfplan
-
-                            echo "PROD plan created:"
-                            ls -lh prod.tfplan
-
-                            echo "Applying PROD..."
-
-                            terraform apply \
-                              -input=false \
-                              -auto-approve \
-                              prod.tfplan
-                        '''
-                    }
+                dir("environments/${params.ENVIRONMENT}") {
+                    sh 'terraform output'
                 }
             }
         }
@@ -254,20 +167,16 @@ pipeline {
 
     post {
 
-        always {
-            archiveArtifacts(
-                artifacts: '**/*.tfplan',
-                allowEmptyArchive: true,
-                fingerprint: true
-            )
-        }
-
         success {
-            echo 'Terraform pipeline completed successfully.'
+            echo "Terraform deployment successful."
         }
 
         failure {
-            echo 'Terraform pipeline failed.'
+            echo "Terraform deployment FAILED."
+        }
+
+        always {
+            echo "Terraform pipeline completed."
         }
     }
 }
